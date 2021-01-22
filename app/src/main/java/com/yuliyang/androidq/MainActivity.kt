@@ -2,36 +2,32 @@ package com.yuliyang.androidq
 
 import android.Manifest
 import android.annotation.SuppressLint
-import android.app.Notification
-import android.app.NotificationManager
-import android.app.PendingIntent
-import android.app.Person
+import android.app.*
+import android.content.ContentUris
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.graphics.drawable.Icon
-import android.net.Uri
 import android.os.Build
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import android.os.Environment
 import android.os.ParcelFileDescriptor
 import android.provider.MediaStore
 import android.provider.Settings
-import android.util.Size
+import androidx.annotation.RequiresApi
+import androidx.appcompat.app.AppCompatActivity
 import kotlinx.android.synthetic.main.activity_main.*
-import java.io.*
-import androidx.core.content.ContextCompat.getSystemService
-import android.app.NotificationChannel
-import android.view.View
-import android.view.View.*
+import java.io.BufferedInputStream
+import java.io.BufferedOutputStream
+import java.io.File
+import java.io.FileOutputStream
 
 
 class MainActivity : AppCompatActivity() {
 
+    @RequiresApi(Build.VERSION_CODES.Q)
     override fun onCreate(savedInstanceState: Bundle?) {
-        window.decorView.systemUiVisibility = (SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                or SYSTEM_UI_FLAG_LAYOUT_STABLE)
+//        window.decorView.systemUiVisibility = (SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+//                or SYSTEM_UI_FLAG_LAYOUT_STABLE)
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
@@ -39,18 +35,8 @@ class MainActivity : AppCompatActivity() {
             requestPermissions(arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE), 100)
         }
 
-        val inputStream = assets.open("test.jpg")
-        val outFile =
-            //获取沙盒地址
-            File(Environment.getExternalStoragePublicDirectory("Android"), "testCopy.jpg")
-        if (!outFile.exists()) {
-            outFile.createNewFile()
-        }
-        val outputStream = FileOutputStream(outFile)
-//        writeFile(inputStream = BufferedInputStream(inputStream), outputStream = BufferedOutputStream(outputStream))
-        //
 //        useMediaStore()
-        //
+
 //        pendingNewMediaFile()
         //
 //        testVolumeName()
@@ -58,18 +44,26 @@ class MainActivity : AppCompatActivity() {
 //        testSettingPannel()
 
         showBubbleTest.setOnClickListener {
-            //            showBubble()
-            startActivity(Intent(this@MainActivity, SecondActivity::class.java))
+            showBubble()
+
+//            pendingNewMediaFile()
+
+//            startActivity(Intent(this@MainActivity, SecondActivity::class.java))
+
+//            queryMediaStore()
         }
     }
 
     @SuppressLint("NewApi")
+    //$ git clone git@github.com:googlecodelabs/android-people.git
+    @Deprecated("详情查看上述地址")
     private fun showBubble() {
         val channelID = "testBubble"
 
         val channelName = "channel_name"
 
-        val channel = NotificationChannel(channelID, channelName, NotificationManager.IMPORTANCE_HIGH)
+        val channel =
+            NotificationChannel(channelID, channelName, NotificationManager.IMPORTANCE_HIGH)
 
         val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
@@ -81,11 +75,12 @@ class MainActivity : AppCompatActivity() {
         val bubbleIntent = PendingIntent.getActivity(this, 0, target, 0 /* flags */)
 
 // Create bubble metadata
-        val bubbleData = Notification.BubbleMetadata.Builder()
+        val bubbleData = Notification.BubbleMetadata.Builder(
+            bubbleIntent,
+            Icon.createWithResource(this, R.mipmap.ic_launcher)
+        )
             .setDesiredHeight(600)
             // Note: although you can set the icon is not displayed in Q Beta 2
-            .setIcon(Icon.createWithResource(this, R.mipmap.ic_launcher))
-            .setIntent(bubbleIntent)
             .setAutoExpandBubble(true)
             .build()
 
@@ -99,10 +94,9 @@ class MainActivity : AppCompatActivity() {
         val builder = Notification.Builder(this, "testBubble")
             .setSmallIcon(R.mipmap.ic_launcher)
             .setBubbleMetadata(bubbleData)
-//                .addPerson(chatBot)
+            .addPerson(chatBot)
 
         manager.notify(1, builder.build())
-        manager.notify(2, builder.build())
     }
 
     @SuppressLint("InlinedApi")
@@ -113,9 +107,9 @@ class MainActivity : AppCompatActivity() {
 
     @SuppressLint("NewApi")
     private fun testVolumeName() {
-        for (volumeName in MediaStore.getAllVolumeNames(this)) {
-            println("volumeName ${volumeName}")
-        }
+//        for (volumeName in MediaStore.getAllVolumeNames(this)) {
+//            println("volumeName ${volumeName}")
+//        }
     }
 
     private fun writeFile(inputStream: BufferedInputStream, outputStream: BufferedOutputStream) {
@@ -136,6 +130,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     @SuppressLint("NewApi")
+    //https://developer.android.google.cn/training/data-storage/shared/media#query-collection
     private fun useMediaStore() {
         //1:
 //        val mediaThumbnail = contentResolver.loadThumbnail(item, Size(640, 480), null)
@@ -145,14 +140,17 @@ class MainActivity : AppCompatActivity() {
 //        }
 
         //可以获取到媒体库文件
+
         val collection = MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL)
-        val collectionWithPending = MediaStore.setIncludePending(collection)
-        contentResolver.query(collectionWithPending, null, null, null).use { c ->
+        //用户获取图片的原始信息
+//        val collectionWithPending = MediaStore.setRequireOriginal(collection)
+        contentResolver.query(collection, null, null, null).use { c ->
             c?.apply {
                 if (moveToFirst()) {
                     do {
-                        val title = c.getString(c.getColumnIndex("title"))
-                        println("title  ${title}")
+                        val id =
+                            //_ID可以替代_DATA的作用
+                            c.getString(c.getColumnIndex(MediaStore.Images.ImageColumns._ID))
                     } while (moveToNext())
                 }
                 close()
@@ -163,16 +161,15 @@ class MainActivity : AppCompatActivity() {
     @SuppressLint("InlinedApi")
     private fun pendingNewMediaFile() {
         val values = ContentValues().apply {
-            put(MediaStore.Images.Media.DISPLAY_NAME, "IMG1024.JPG")
+            put(MediaStore.Images.Media.DISPLAY_NAME, "test_insert.jpg")
+            put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/wechat")
             put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
             put(MediaStore.Images.Media.IS_PENDING, 1)
         }
-
-        val collection = MediaStore.Images.Media
-            .getContentUri(MediaStore.VOLUME_EXTERNAL)
+        val collection = MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL)
         val item = contentResolver.insert(collection, values)
         item?.apply {
-            contentResolver.openFileDescriptor(item, "w", null).use { pfd ->
+            val pfd = contentResolver.openFileDescriptor(item, "w", null).use { pfd ->
                 // Write data into the pending image.
                 pfd?.apply {
                     val inputStream = assets.open("pendingTest.jpg")
@@ -189,6 +186,7 @@ class MainActivity : AppCompatActivity() {
             values.clear()
             values.put(MediaStore.Images.Media.IS_PENDING, 0)
             contentResolver.update(item, values, null, null)
+            pfd?.close()
         }
 
     }
@@ -200,5 +198,22 @@ class MainActivity : AppCompatActivity() {
         } else {
             // No longer the top resumed activity
         }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.Q)
+    private fun queryMediaStore() {
+        val collection = MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+        //这个id可以通过contentResolver获取
+        val url = ContentUris.withAppendedId(collection, 32)
+        val inputStream = contentResolver.openInputStream(url)
+        val outFile = File(cacheDir, "query_test.jpg")
+        if (!outFile.exists()) {
+            outFile.createNewFile()
+        }
+        val outputStream = FileOutputStream(outFile)
+        writeFile(
+            inputStream = BufferedInputStream(inputStream),
+            BufferedOutputStream(outputStream)
+        )
     }
 }
