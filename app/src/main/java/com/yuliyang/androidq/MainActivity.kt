@@ -128,6 +128,27 @@ class MainActivity : AppCompatActivity() {
             outputStream.close()
         }
     }
+    
+/*    val urisToModify = listOf(uri,uri,...)
+val editPendingIntent = MediaStore.createWriteRequest(contentResolver,
+        urisToModify)
+
+// 申请权限
+startIntentSenderForResult(editPendingIntent.intentSender, EDIT_REQUEST_CODE,
+    null, 0, 0, 0)
+
+override fun onActivityResult(requestCode: Int, resultCode: Int,data: Intent?) {
+    when (requestCode) {
+        EDIT_REQUEST_CODE ->
+            if (resultCode == Activity.RESULT_OK) {
+                /*获得权限*/
+            } else {
+                /*未获得权限*/
+            }
+    }
+}
+*/
+
 
     @SuppressLint("NewApi")
     //https://developer.android.google.cn/training/data-storage/shared/media#query-collection
