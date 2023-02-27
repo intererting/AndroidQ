@@ -3,6 +3,8 @@ package com.yuliyang.androidq
 import android.Manifest
 import android.annotation.SuppressLint
 import android.app.*
+import android.app.PendingIntent.FLAG_IMMUTABLE
+import android.app.PendingIntent.FLAG_MUTABLE
 import android.content.ContentUris
 import android.content.ContentValues
 import android.content.Context
@@ -13,9 +15,14 @@ import android.os.Bundle
 import android.os.ParcelFileDescriptor
 import android.provider.MediaStore
 import android.provider.Settings
+import android.view.LayoutInflater
+import android.view.View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+import android.view.View.SYSTEM_UI_FLAG_LAYOUT_STABLE
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
-import kotlinx.android.synthetic.main.activity_main.*
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsControllerCompat
+import com.yuliyang.androidq.databinding.ActivityMainBinding
 import java.io.BufferedInputStream
 import java.io.BufferedOutputStream
 import java.io.File
@@ -24,12 +31,13 @@ import java.io.FileOutputStream
 
 class MainActivity : AppCompatActivity() {
 
+    private lateinit var binding: ActivityMainBinding
+
     @RequiresApi(Build.VERSION_CODES.Q)
     override fun onCreate(savedInstanceState: Bundle?) {
-//        window.decorView.systemUiVisibility = (SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-//                or SYSTEM_UI_FLAG_LAYOUT_STABLE)
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
+        binding = ActivityMainBinding.inflate(LayoutInflater.from(this))
+        setContentView(binding.root)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             requestPermissions(arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE), 100)
@@ -39,11 +47,11 @@ class MainActivity : AppCompatActivity() {
 
 //        pendingNewMediaFile()
         //
-//        testVolumeName()
+        testVolumeName()
         //
 //        testSettingPannel()
 
-        showBubbleTest.setOnClickListener {
+        binding.showBubbleTest.setOnClickListener {
             showBubble()
 
 //            pendingNewMediaFile()
@@ -72,29 +80,20 @@ class MainActivity : AppCompatActivity() {
 
         // Create bubble intent
         val target = Intent(this, BubbleActivity::class.java)
-        val bubbleIntent = PendingIntent.getActivity(this, 0, target, 0 /* flags */)
+        val bubbleIntent = PendingIntent.getActivity(this, 0, target, FLAG_MUTABLE /* flags */)
 
 // Create bubble metadata
         val bubbleData = Notification.BubbleMetadata.Builder(
-            bubbleIntent,
-            Icon.createWithResource(this, R.mipmap.ic_launcher)
-        )
-            .setDesiredHeight(600)
+            bubbleIntent, Icon.createWithResource(this, R.mipmap.ic_launcher)
+        ).setDesiredHeight(600)
             // Note: although you can set the icon is not displayed in Q Beta 2
-            .setAutoExpandBubble(true)
-            .build()
+            .setAutoExpandBubble(true).build()
 
 // Create notification
-        val chatBot = Person.Builder()
-            .setBot(true)
-            .setName("BubbleBot")
-            .setImportant(true)
-            .build()
+        val chatBot = Person.Builder().setBot(true).setName("BubbleBot").setImportant(true).build()
 
-        val builder = Notification.Builder(this, "testBubble")
-            .setSmallIcon(R.mipmap.ic_launcher)
-            .setBubbleMetadata(bubbleData)
-            .addPerson(chatBot)
+        val builder = Notification.Builder(this, "testBubble").setSmallIcon(R.mipmap.ic_launcher)
+            .setBubbleMetadata(bubbleData).addPerson(chatBot)
 
         manager.notify(1, builder.build())
     }
@@ -107,9 +106,9 @@ class MainActivity : AppCompatActivity() {
 
     @SuppressLint("NewApi")
     private fun testVolumeName() {
-//        for (volumeName in MediaStore.getAllVolumeNames(this)) {
-//            println("volumeName ${volumeName}")
-//        }
+        for (volumeName in MediaStore.getExternalVolumeNames(this)) {
+            println("volumeName ${volumeName}")
+        }
     }
 
     private fun writeFile(inputStream: BufferedInputStream, outputStream: BufferedOutputStream) {
@@ -128,7 +127,7 @@ class MainActivity : AppCompatActivity() {
             outputStream.close()
         }
     }
-    
+
 /*    val urisToModify = listOf(uri,uri,...)
 val editPendingIntent = MediaStore.createWriteRequest(contentResolver,
         urisToModify)
@@ -162,7 +161,7 @@ override fun onActivityResult(requestCode: Int, resultCode: Int,data: Intent?) {
 
         //可以获取到媒体库文件
 
-        val collection = MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL)
+        val collection = MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_INTERNAL)
         //用户获取图片的原始信息
 //        val collectionWithPending = MediaStore.setRequireOriginal(collection)
         contentResolver.query(collection, null, null, null).use { c ->
@@ -233,8 +232,7 @@ override fun onActivityResult(requestCode: Int, resultCode: Int,data: Intent?) {
         }
         val outputStream = FileOutputStream(outFile)
         writeFile(
-            inputStream = BufferedInputStream(inputStream),
-            BufferedOutputStream(outputStream)
+            inputStream = BufferedInputStream(inputStream), BufferedOutputStream(outputStream)
         )
     }
 }
